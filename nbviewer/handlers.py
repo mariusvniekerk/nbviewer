@@ -898,16 +898,67 @@ class LocalFileHandler(RenderingHandler):
             self.settings.get('localfile_path', ''),
             path,
         )
-        
-        app_log.info("looking for file: '%s'" % abspath)
-        if not os.path.exists(abspath):
-            raise web.HTTPError(404)
-        
-        with io.open(abspath, encoding='utf-8') as f:
-            nbdata = f.read()
-        
-        yield self.finish_notebook(nbdata, download_url=path, msg="file from localfile: %s" % path)
 
+        if os.path.isdir(abspath):
+            app_log.info("Its a path: '%s'" % abspath)
+            yield  self.cache_and_finish(self.show_dir(abspath, path))
+
+            
+        else:
+            app_log.info("looking for file: '%s'" % abspath)
+        
+            if not os.path.exists(abspath):
+                raise web.HTTPError(404)
+            
+            with io.open(abspath, encoding='utf-8') as f:
+                nbdata = f.read()
+        
+            yield self.finish_notebook(nbdata, download_url=path, msg="file from localfile: %s" % path)
+
+    def show_dir(self,  abspath,  path, breadcrumbs=None):
+        """
+        """
+
+        base_url = u'/localfile'
+
+        breadcrumbs = [{
+            'url' : base_url+'/',
+            'name': 'home'
+        }]
+        
+        app_log.info(self.breadcrumbs(path, base_url))
+ 
+        breadcrumbs.extend(self.breadcrumbs(path, base_url))
+    
+        entries = []
+        dirs = []
+        ipynbs = []
+
+        for f in os.listdir(abspath):
+            absf = os.path.join(abspath,f)
+            
+            e = {}
+            e['name'] = f 
+            app_log.info("{}: {}".format(abspath, f))
+            if f.startswith('.') or f.startswith('_'):
+                continue
+            
+            elif os.path.isdir(absf):
+                e['url'] = quote(os.path.join(base_url,path, f))
+                e['class'] = 'icon-folder-open'
+                dirs.append(e)
+            elif f.endswith('.ipynb'):
+                e['url'] = quote(os.path.join(base_url,path, f))
+                e['class'] = 'icon-book'
+                ipynbs.append(e)
+
+        entries.extend(dirs)
+        entries.extend(ipynbs)
+
+        return self.render_template('dirview.html',
+            entries=entries,
+            breadcrumbs=breadcrumbs)
+            
 
 #-----------------------------------------------------------------------------
 # Default handler URL mapping

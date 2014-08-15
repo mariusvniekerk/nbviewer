@@ -156,8 +156,11 @@ def main():
     github_client = AsyncGitHubClient(client)
     
     # load frontpage sections
-    with io.open(options.frontpage, 'r') as f:
-        frontpage_sections = json.load(f)
+    try:
+        with io.open(options.frontpage, 'r') as f:
+            frontpage_sections = json.load(f)
+    except IOError:
+        frontpage_sections =  []
     
     # cache frontpage links for the maximum allowed time
     max_cache_uris = {''}
@@ -192,6 +195,7 @@ def main():
         log.app_log.warning("Serving local notebooks in %s, this can be a security risk", options.localfiles)
         # use absolute or relative paths:
         handlers.insert(0, (r'/localfile/(.*)', LocalFileHandler))
+        handlers.insert(0, (r'/localfile/(.*)/', LocalFileHandler))
 
     # load ssl options
     ssl_options = None
